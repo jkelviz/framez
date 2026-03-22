@@ -79,6 +79,7 @@ export default function NovoEnsaioPage() {
     const [isEditingSlug, setIsEditingSlug] = useState(false)
     const [customSlug, setCustomSlug] = useState("")
     const [sessionId, setSessionId] = useState<string | null>(null)
+    const [finalSessionId, setFinalSessionId] = useState<string | null>(null)
 
     const defaultSlug = clientName
         ? clientName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
@@ -390,6 +391,7 @@ export default function NovoEnsaioPage() {
                 if (!data?.id) throw new Error("Resposta inválida do servidor.")
                 
                 finalSessionId = data.id
+                setFinalSessionId(data.id)
             } else {
                 // Create new session
                 const title = sessionTitle.trim() || clientName.trim() || "Ensaio"
@@ -420,6 +422,7 @@ export default function NovoEnsaioPage() {
                 if (!data?.id) throw new Error("Resposta inválida do servidor.")
 
                 finalSessionId = data.id
+                setFinalSessionId(data.id)
                 setSessionId(data.id)
 
                 // Upload photos if they exist and haven't been uploaded yet
@@ -427,7 +430,17 @@ export default function NovoEnsaioPage() {
                 if (pendingPhotos.length > 0) {
                     for (let i = 0; i < pendingPhotos.length; i++) {
                         const photoIndex = photos.indexOf(pendingPhotos[i])
-                        await uploadPhoto(pendingPhotos[i], photoIndex, photographer.user_id, finalSessionId)
+                        await uploadPhoto(pendingPhotos[i], photoIndex, photographer.id, finalSessionId)
+                    }
+                }
+
+                // Set cover photo if selected
+                if (coverIndex !== null && photos[coverIndex]?.url) {
+                    const coverPhoto = photos[coverIndex]
+                    if (coverPhoto?.url) {
+                        await supabase.from('sessions')
+                            .update({ cover_photo_url: coverPhoto.url })
+                            .eq('id', finalSessionId)
                     }
                 }
             }
@@ -873,6 +886,7 @@ export default function NovoEnsaioPage() {
                 isOpen={showPublishModal}
                 onClose={() => setShowPublishModal(false)}
                 galleryUrl={galleryUrl}
+                sessionId={finalSessionId || undefined}
             />
         </div>
     )

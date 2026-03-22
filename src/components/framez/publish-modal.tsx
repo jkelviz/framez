@@ -1,4 +1,5 @@
 import { X, CheckCircle2, Copy, ExternalLink, Share2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -6,10 +7,23 @@ interface PublishSuccessModalProps {
     isOpen: boolean;
     onClose: () => void;
     galleryUrl: string;
+    sessionId?: string;
 }
 
-export function PublishSuccessModal({ isOpen, onClose, galleryUrl }: PublishSuccessModalProps) {
+export function PublishSuccessModal({ isOpen, onClose, galleryUrl, sessionId }: PublishSuccessModalProps) {
+    const router = useRouter();
+
     if (!isOpen) return null;
+
+    const handleClose = () => {
+        onClose();
+        // Redirect to session edit page after closing
+        if (sessionId) {
+            router.push(`/ensaios/${sessionId}`);
+        } else {
+            router.push('/ensaios');
+        }
+    };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(galleryUrl);
@@ -28,7 +42,7 @@ export function PublishSuccessModal({ isOpen, onClose, galleryUrl }: PublishSucc
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111111] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
                 <div className="flex justify-end">
-                    <button onClick={onClose} className="rounded-full p-1 text-[#888880] hover:bg-[#161616] hover:text-[#F5F5F0] transition-colors">
+                    <button onClick={handleClose} className="rounded-full p-1 text-[#888880] hover:bg-[#161616] hover:text-[#F5F5F0] transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>

@@ -73,13 +73,8 @@ export default function ConfiguracoesPage() {
                 .from('photographers')
                 .update({
                     name,
-                    phone,
-                    bio,
-                    email_notifications: emailNotifications,
-                    default_gallery_style: defaultStyle,
-                    show_framez_brand: showFramezBrand,
-                    allow_downloads: allowDownloads,
-                    show_photo_counter: showPhotoCounter
+                    phone: phone || null,
+                    bio: bio || null
                 })
                 .eq('user_id', photographer.user_id)
             
@@ -94,7 +89,13 @@ export default function ConfiguracoesPage() {
 
     const handlePasswordReset = async () => {
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user?.email) {
+                toast.error("Email não encontrado")
+                return
+            }
+            
+            const { error } = await supabase.auth.resetPasswordForEmail(user.email)
             if (error) throw error
             toast.success("Email de redefinição enviado!")
         } catch (error: any) {

@@ -15,7 +15,7 @@ export function SplashScreen({ clientName, onComplete }: SplashScreenProps) {
         const timer = setTimeout(() => {
             setIsVisible(false);
             setTimeout(onComplete, 800); // Wait for fade out
-        }, 2000);
+        }, 2500); // 2.5 seconds
         return () => clearTimeout(timer);
     }, [onComplete]);
 

@@ -6,9 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface FloatingBarProps {
     onReviver: () => void;
+    favoritesCount: number;
+    selectedCount: number;
+    onDownloadSelected: () => void;
 }
 
-export function FloatingBar({ onReviver }: FloatingBarProps) {
+export function FloatingBar({ onReviver, favoritesCount, selectedCount, onDownloadSelected }: FloatingBarProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -34,13 +37,13 @@ export function FloatingBar({ onReviver }: FloatingBarProps) {
                 >
                     <div className="flex items-center gap-2 text-white/80 hover:text-fz-accent cursor-pointer transition-colors">
                         <Heart className="h-5 w-5" />
-                        <span className="text-sm font-medium">3</span>
+                        <span className="text-sm font-medium">{favoritesCount}</span>
                     </div>
                     <div className="flex items-center gap-2 text-white/80 hover:text-green-500 cursor-pointer transition-colors border-l border-fz-border pl-6">
                         <CheckCircle className="h-5 w-5" />
-                        <span className="text-sm font-medium">12</span>
+                        <span className="text-sm font-medium">{selectedCount}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-white/80 hover:text-white cursor-pointer transition-colors border-l border-fz-border pl-6 pr-2">
+                    <div onClick={onDownloadSelected} className="flex items-center gap-2 text-white/80 hover:text-white cursor-pointer transition-colors border-l border-fz-border pl-6 pr-2">
                         <Download className="h-5 w-5" />
                     </div>
                     <button

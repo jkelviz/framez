@@ -75,7 +75,7 @@ export function ClientsPage() {
             const { data: sessions, error: se } = await supabase
                 .from("sessions")
                 .select("id, client_name, view_count, status, created_at")
-                .eq("photographer_id", photographer.user_id)
+                .eq("photographer_id", photographer.id)
 
             if (se || !sessions) {
                 if (!cancelled) {

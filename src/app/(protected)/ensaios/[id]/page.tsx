@@ -11,7 +11,6 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { UploadZone } from "@/components/editor/upload-zone"
 import { PhotoGridManager } from "@/components/editor/photo-grid-manager"
-import bcrypt from "bcryptjs"
 
 const galleryStyles = [
     { id: "grid", label: "Grid", icon: Grid3X3 },
@@ -67,6 +66,16 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
                     setHasExpiration(true)
                     setExpirationDate(data.expires_at.split('T')[0])
                 }
+
+                // Fetch existing photos for this session
+                const { data: existingPhotos } = await supabase
+                    .from('photos')
+                    .select('*')
+                    .eq('session_id', params.id)
+                    .order('order_index', { ascending: true })
+
+                // Set photos in PhotoGridManager (need to pass this as prop)
+                console.log('Existing photos:', existingPhotos)
             }
             setIsLoading(false)
         }
@@ -126,7 +135,8 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
             // Hash password if provided
             let passwordHash = null
             if (passwordProtected && password) {
-                passwordHash = await bcrypt.hash(password, 10)
+                const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password.trim()))
+                passwordHash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("")
             }
 
             const updatePayload: any = {

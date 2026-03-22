@@ -50,7 +50,7 @@ export default function EnsaiosPage() {
             const { data, error } = await supabase
                 .from("sessions")
                 .select("id, title, client_name, slug, status, view_count, created_at, cover_photo_url")
-                .eq("photographer_id", photographer.user_id)
+                .eq("photographer_id", photographer.id)
                 .order("created_at", { ascending: false })
 
             if (error) {

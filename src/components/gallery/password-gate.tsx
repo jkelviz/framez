@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import bcrypt from "bcryptjs";
 
 interface PasswordGateProps {
     onSuccess: () => void;
@@ -18,27 +17,24 @@ export function PasswordGate({ onSuccess, sessionPasswordHash }: PasswordGatePro
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!sessionPasswordHash) {
-            setError("Esta galeria não está protegida por senha");
+        if (!sessionPasswordHash) { 
+            onSuccess(); 
             return;
         }
 
         setIsLoading(true);
         try {
-            // Try bcrypt comparison first
-            const isValid = await bcrypt.compare(password, sessionPasswordHash);
+            const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password.trim()));
+            const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
             
-            // Fallback for plain text passwords (if any were saved before hashing)
-            const isValidFallback = password === sessionPasswordHash;
-
-            if (isValid || isValidFallback) {
+            if (hash === sessionPasswordHash || password === sessionPasswordHash) {
                 onSuccess();
             } else {
                 setError("Senha incorreta");
             }
-        } catch (err) {
+        } catch { 
             setError("Erro ao validar senha");
-        } finally {
+        } finally { 
             setIsLoading(false);
         }
     };

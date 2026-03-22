@@ -25,6 +25,37 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const [showReviver, setShowReviver] = useState(false);
 
+    // Calculate counts
+    const favoritesCount = photos.filter(p => p.is_favorite).length;
+    const selectedCount = photos.filter(p => p.is_selected).length;
+
+    // Get hero photo
+    const heroPhoto = sessionData?.cover_photo_url || photos[0]?.src;
+
+    const handleDownloadSelected = async () => {
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        const selectedPhotos = photos.filter(p => p.is_selected);
+        
+        for (let i = 0; i < selectedPhotos.length; i++) {
+            try {
+                const response = await fetch(selectedPhotos[i].src);
+                const blob = await response.blob();
+                zip.file(`foto-${i+1}.jpg`, blob);
+            } catch (error) {
+                console.error('Error downloading photo:', error);
+            }
+        }
+        
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fotos-selecionadas.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     useEffect(() => {
         async function fetchSession() {
             try {
@@ -53,7 +84,14 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
                 if (photosError) {
                     console.error("Error fetching photos:", photosError);
                 } else {
-                    setPhotos(sessionPhotos || []);
+                    // Map photos to expected format
+                    const mappedPhotos = (sessionPhotos || []).map(p => ({
+                        ...p,
+                        src: p.url,
+                        width: p.width || 800,
+                        height: p.height || 600,
+                    }));
+                    setPhotos(mappedPhotos);
                 }
             } catch (error) {
                 console.error("Error fetching session:", error);
@@ -103,9 +141,19 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
             )}
 
             {/* Header */}
-            <header className={`py-12 text-center transition-opacity duration-1000 ${showSplash ? 'opacity-0' : 'opacity-100'}`}>
-                <h1 className="font-serif text-5xl mb-2">{sessionData.client_name}</h1>
-                <p className="text-fz-text-secondary tracking-widest uppercase text-sm">{sessionData.title || 'Galeria Privada'}</p>
+            <header className={`py-12 text-center transition-opacity duration-1000 ${showSplash ? 'opacity-0' : 'opacity-100'}`}
+                style={{
+                    backgroundImage: heroPhoto 
+                        ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url(${heroPhoto})`
+                        : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                }}>
+                <div className="bg-gradient-to-t from-black/80 via-black/40 to-transparent py-12">
+                    <h1 className="font-serif text-5xl mb-2">{sessionData.client_name}</h1>
+                    <p className="text-fz-text-secondary tracking-widest uppercase text-sm">{sessionData.title || 'Galeria Privada'}</p>
+                </div>
             </header>
 
             {/* Main Gallery Layout */}
@@ -136,7 +184,12 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
 
             {/* Floating Bar - Only show if not in fullscreen viewers */}
             {viewerIndex === null && !showReviver && !showSplash && (
-                <FloatingBar onReviver={() => setShowReviver(true)} />
+                <FloatingBar 
+                    onReviver={() => setShowReviver(true)} 
+                    favoritesCount={favoritesCount}
+                    selectedCount={selectedCount}
+                    onDownloadSelected={handleDownloadSelected}
+                />
             )}
         </div>
     );

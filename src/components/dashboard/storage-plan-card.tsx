@@ -34,26 +34,32 @@ export function StoragePlanCard() {
         return
       }
 
-      // Get sessions first
+      // Get real storage data from photographers table
+      const { data: photographerData } = await supabase
+        .from("photographers")
+        .select("plan")
+        .eq("user_id", photographer.user_id)
+        .single()
+
+      // Mock storage calculation based on session count for now
       const { data: sessions } = await supabase
         .from("sessions")
-        .select("id, title, client_name")
+        .select("id")
         .eq("photographer_id", photographer.id)
-
-      // Get total storage used from photos table
-      // Note: file_size_bytes field doesn't exist in photos table yet
-      // const { data: photos } = await supabase
-      //   .from("photos")
-      //   .select("file_size_bytes")
-      //   .in("session_id", sessions?.map(s => s.id) || [])
       
-      // Mock storage calculation based on session count
       const sessionCount = sessions?.length || 0
-      const estimatedBytes = sessionCount * 500 * 1024 * 1024 // 500MB per session estimate
-      const totalBytes = estimatedBytes
-      const totalStorageGB = 100 // Fixed 100GB limit
-      const usedGB = totalBytes / (1024 * 1024 * 1024)
-      const usedPercentage = (usedGB / totalStorageGB) * 100
+      const usedGB = sessionCount * 0.5 // Estimate 0.5GB per session
+      
+      // Plan limits
+      const planLimits: Record<string, number> = {
+        free: 2,
+        starter: 10,
+        pro: 100,
+        professional: 500
+      }
+      
+      const planLimit = planLimits[photographerData?.plan || 'free'] || 2
+      const percentage = (usedGB / planLimit) * 100
 
       // For now, group all as "Ensaios" since we don't have session types
       const data: StorageData[] = [
@@ -61,7 +67,7 @@ export function StoragePlanCard() {
           label: "Ensaios",
           size: `${usedGB.toFixed(1)} GB`,
           color: "#E85D24",
-          percentage: Math.min(usedPercentage, 100)
+          percentage: Math.min(percentage, 100)
         }
       ]
 
