@@ -44,18 +44,21 @@ export default function ConfiguracoesPage() {
                     .eq('user_id', photographerData.user_id)
                     .single()
                 
+                // Fetch auth user for email
+                const { data: { user } } = await supabase.auth.getUser()
+                
                 if (data) {
                     setPhotographer(data)
                     setName(data.name || "")
-                    setEmail(data.user?.email || "")
-                    setPhone(data.phone || "")
+                    setEmail(user?.email || "")
                     setBio(data.bio || "")
                     setAvatarUrl(data.avatar_url || "")
-                    setEmailNotifications(data.email_notifications !== false)
-                    setDefaultStyle(data.default_gallery_style || "grid")
-                    setShowFramezBrand(data.show_framez_brand !== false)
-                    setAllowDownloads(data.allow_downloads !== false)
-                    setShowPhotoCounter(data.show_photo_counter !== false)
+                    // Note: These settings are not in the database schema yet
+                    // setEmailNotifications(data.email_notifications !== false)
+                    // setDefaultStyle(data.default_gallery_style || "grid")
+                    // setShowFramezBrand(data.show_framez_brand !== false)
+                    // setAllowDownloads(data.allow_downloads !== false)
+                    // setShowPhotoCounter(data.show_photo_counter !== false)
                 }
             }
             setLoading(false)

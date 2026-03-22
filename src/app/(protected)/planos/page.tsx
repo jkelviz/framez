@@ -50,13 +50,17 @@ export default function PlanosPage() {
                         .eq('photographer_id', data.id)
                     
                     if (sessions && sessions.length > 0) {
-                        const { data: photos } = await supabase
-                            .from('photos')
-                            .select('file_size_bytes')
-                            .in('session_id', sessions.map(s => s.id))
+                        // Note: file_size_bytes field doesn't exist in photos table yet
+                        // const { data: photos } = await supabase
+                        //     .from('photos')
+                        //     .select('file_size_bytes')
+                        //     .in('session_id', sessions.map(s => s.id))
                         
-                        const totalBytes = photos?.reduce((sum, photo) => sum + (photo.file_size_bytes || 0), 0) || 0
-                        setStorageUsed(totalBytes / (1024 * 1024 * 1024)) // Convert to GB
+                        // const totalBytes = photos?.reduce((sum, photo) => sum + (photo.file_size_bytes || 0), 0) || 0
+                        // setStorageUsed(totalBytes / (1024 * 1024 * 1024)) // Convert to GB
+                        
+                        // Mock storage for now
+                        setStorageUsed(sessions.length * 0.5) // Estimate 0.5GB per session
                     }
                     
                     // Mock billing history for now

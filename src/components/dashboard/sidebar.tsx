@@ -32,7 +32,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [photographer, setPhotographer] = useState<{ name: string | null; plan: string | null } | null>(null)
+  const [photographer, setPhotographer] = useState<{ name: string | null; plan: string | null | undefined } | null>(null)
 
   useEffect(() => {
     async function fetchPhotographer() {
