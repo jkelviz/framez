@@ -160,6 +160,11 @@ export function ClientsPage() {
         return matchesSearch && matchesFilter
     })
 
+    // Debug logging
+    console.log('Clients data:', clients)
+    console.log('Filtered clients:', filteredClients)
+    console.log('Loading:', loading)
+
     const totalClients = clients.length
     const totalSessions = clients.reduce((acc, c) => acc + c.sessionsCount, 0)
     const totalFavorites = clients.reduce((acc, c) => acc + c.favoritePhotos, 0)
@@ -179,7 +184,7 @@ export function ClientsPage() {
     }
 
     return (
-        <div className="flex flex-col w-full animate-fade-in-up">
+        <div className="flex flex-col w-full dashboard-page animate-fade-in-up">
             <SharedTopBar title="Clientes" />
 
             <div className="mx-auto w-full max-w-[1200px] p-4 md:p-8">

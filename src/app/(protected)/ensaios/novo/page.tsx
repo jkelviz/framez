@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -16,6 +16,9 @@ import {
     Pencil,
     Star,
     Loader2,
+    Upload,
+    AlertCircle,
+    RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PublishSuccessModal } from "@/components/framez/publish-modal"
@@ -46,9 +49,19 @@ const photoGradients = [
     "linear-gradient(135deg, #2A1A2A 0%, #100810 100%)",
 ]
 
+interface PhotoFile {
+    file: File
+    preview: string
+    progress: number
+    status: 'pending' | 'uploading' | 'success' | 'error'
+    error?: string
+    url?: string
+}
+
 export default function NovoEnsaioPage() {
     const router = useRouter()
     const supabase = createClient()
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [clientName, setClientName] = useState("")
     const [sessionTitle, setSessionTitle] = useState("")
     const [selectedStyle, setSelectedStyle] = useState("grid")
@@ -57,7 +70,7 @@ export default function NovoEnsaioPage() {
     const [hasExpiration, setHasExpiration] = useState(false)
     const [expirationDate, setExpirationDate] = useState("")
     const [showInPortfolio, setShowInPortfolio] = useState(true)
-    const [photos, setPhotos] = useState<number[]>([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    const [photos, setPhotos] = useState<PhotoFile[]>([])
     const [isDragOver, setIsDragOver] = useState(false)
     const [showPublishModal, setShowPublishModal] = useState(false)
     const [galleryUrl, setGalleryUrl] = useState("")
@@ -65,6 +78,7 @@ export default function NovoEnsaioPage() {
     const [coverIndex, setCoverIndex] = useState<number | null>(null)
     const [isEditingSlug, setIsEditingSlug] = useState(false)
     const [customSlug, setCustomSlug] = useState("")
+    const [sessionId, setSessionId] = useState<string | null>(null)
 
     const defaultSlug = clientName
         ? clientName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
@@ -72,8 +86,248 @@ export default function NovoEnsaioPage() {
 
     const displaySlug = customSlug || defaultSlug
 
+    const updateCoverPhoto = async (photoIndex: number) => {
+        setCoverIndex(photoIndex)
+        
+        if (sessionId && photos[photoIndex]?.url) {
+            const { error } = await supabase
+                .from('sessions')
+                .update({ cover_photo_url: photos[photoIndex].url })
+                .eq('id', sessionId)
+            
+            if (error) {
+                console.error('Error updating cover photo:', error)
+                toast.error('Erro ao atualizar foto de capa')
+            } else {
+                console.log('Cover photo updated successfully')
+                toast.success('Foto de capa atualizada')
+            }
+        }
+    }
+
     const removePhoto = (index: number) => {
         setPhotos(photos.filter((_, i) => i !== index))
+        if (coverIndex === index) setCoverIndex(null)
+        else if (coverIndex !== null && coverIndex > index) setCoverIndex(coverIndex - 1)
+    }
+
+    const validateFile = (file: File): boolean => {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        const maxSize = 20 * 1024 * 1024 // 20MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Apenas arquivos JPG, PNG e WEBP são permitidos')
+            return false
+        }
+        
+        if (file.size > maxSize) {
+            toast.error('O tamanho máximo permitido é 20MB por foto')
+            return false
+        }
+        
+        return true
+    }
+
+    const createTempSession = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('User not authenticated')
+            
+            // Get photographer profile
+            const { data: photographer, error: photographerError } = await supabase
+                .from('photographers')
+                .select('id')
+                .eq('user_id', user.id)
+                .single()
+            
+            if (photographerError || !photographer) {
+                console.error('Photographer not found:', photographerError)
+                throw new Error('Perfil de fotógrafo não encontrado')
+            }
+            
+            console.log('Photographer found:', photographer.id)
+            
+            // Create temporary session
+            const tempTitle = sessionTitle.trim() || clientName.trim() || "Ensaio Temporário"
+            const tempSlug = await resolveUniqueSlug(`temp-${Date.now()}`)
+            
+            const { data, error } = await supabase
+                .from("sessions")
+                .insert({
+                    photographer_id: photographer.id,
+                    title: tempTitle,
+                    client_name: clientName.trim() || "Cliente Temporário",
+                    slug: tempSlug,
+                    style: selectedStyle,
+                    status: "draft",
+                })
+                .select("id")
+                .single()
+            
+            if (error) {
+                console.error('Session creation error:', error)
+                throw error
+            }
+            
+            if (!data?.id) throw new Error("Resposta inválida do servidor.")
+            
+            console.log('Temporary session created:', data.id)
+            setSessionId(data.id)
+            return { sessionId: data.id, photographerId: photographer.id }
+            
+        } catch (error) {
+            console.error('Error creating temp session:', error)
+            throw error
+        }
+    }
+
+    const handleFileSelect = async (files: FileList | null) => {
+        if (!files) return
+        
+        try {
+            // Ensure we have a session ID
+            let currentSessionId = sessionId
+            let photographerId = null
+            
+            if (!currentSessionId) {
+                const result = await createTempSession()
+                currentSessionId = result.sessionId
+                photographerId = result.photographerId
+            } else {
+                const photographer = await getPhotographer(supabase)
+                photographerId = photographer?.user_id
+            }
+            
+            if (!photographerId) {
+                toast.error('Não foi possível identificar o fotógrafo')
+                return
+            }
+            
+            const newPhotos: PhotoFile[] = []
+            
+            Array.from(files).forEach(file => {
+                if (validateFile(file)) {
+                    const preview = URL.createObjectURL(file)
+                    newPhotos.push({
+                        file,
+                        preview,
+                        progress: 0,
+                        status: 'pending'
+                    })
+                }
+            })
+            
+            setPhotos(prev => [...prev, ...newPhotos])
+            
+            // Start uploads immediately
+            for (let i = 0; i < newPhotos.length; i++) {
+                const photoIndex = photos.length + i
+                await uploadPhoto(newPhotos[i], photoIndex, photographerId, currentSessionId)
+            }
+            
+        } catch (error) {
+            console.error('Error in handleFileSelect:', error)
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao processar arquivos'
+            toast.error(errorMessage)
+        }
+    }
+
+    const uploadPhoto = async (photo: PhotoFile, index: number, photographerId: string, sessionId: string) => {
+        console.log('Starting upload for photo:', photo.file.name, 'to session:', sessionId)
+        setPhotos(prev => prev.map((p, i) => 
+            i === index ? { ...p, status: 'uploading', progress: 0 } : p
+        ))
+        
+        try {
+            // Sanitize filename
+            const sanitizedName = photo.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+            const fileName = `${Date.now()}-${sanitizedName}`
+            const filePath = `${photographerId}/${sessionId}/${fileName}`
+            
+            console.log('Upload path:', filePath)
+            console.log('File size:', photo.file.size)
+            console.log('File type:', photo.file.type)
+            
+            // Upload to Supabase Storage
+            const { data, error } = await supabase.storage
+                .from('photos')
+                .upload(filePath, photo.file, {
+                    cacheControl: '3600',
+                    upsert: false
+                })
+            
+            console.log('Storage upload result:', { data, error })
+            
+            if (error) {
+                console.error('Storage upload error:', error)
+                throw error
+            }
+            
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('photos')
+                .getPublicUrl(filePath)
+            
+            const publicUrl = urlData.publicUrl
+            console.log('Public URL:', publicUrl)
+            
+            // Save to photos table
+            const { error: dbError } = await supabase
+                .from('photos')
+                .insert({
+                    session_id: sessionId,
+                    url: publicUrl,
+                    file_size_bytes: photo.file.size,
+                    order_index: index
+                })
+            
+            console.log('Database insert result:', { dbError })
+            
+            if (dbError) {
+                console.error('Database insert error:', dbError)
+                throw dbError
+            }
+            
+            setPhotos(prev => prev.map((p, i) => 
+                i === index ? { ...p, status: 'success', progress: 100, url: publicUrl } : p
+            ))
+            
+            console.log('Upload successful for:', photo.file.name)
+            
+            // Trigger storage update event
+            window.dispatchEvent(new CustomEvent('storageUpdate'))
+            
+            // Update session cover photo if this is the cover photo
+            if (coverIndex === index && sessionId) {
+                const { error: coverError } = await supabase
+                    .from('sessions')
+                    .update({ cover_photo_url: publicUrl })
+                    .eq('id', sessionId)
+                
+                if (coverError) {
+                    console.error('Error updating cover photo:', coverError)
+                } else {
+                    console.log('Cover photo updated successfully')
+                }
+            }
+            
+        } catch (error) {
+            console.error('Upload error:', error)
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload'
+            console.error('Error message:', errorMessage)
+            
+            setPhotos(prev => prev.map((p, i) => 
+                i === index ? { ...p, status: 'error', error: errorMessage } : p
+            ))
+        }
+    }
+
+    const retryUpload = async (index: number) => {
+        const photographer = await getPhotographer(supabase)
+        if (!photographer || !sessionId) return
+        
+        const photo = photos[index]
+        await uploadPhoto(photo, index, photographer.user_id, sessionId)
     }
 
     async function resolveUniqueSlug(base: string) {
@@ -103,39 +357,88 @@ export default function NovoEnsaioPage() {
                 toast.error("Perfil de fotógrafo não encontrado.")
                 return
             }
-            const title = sessionTitle.trim() || clientName.trim() || "Ensaio"
-            const finalSlug = await resolveUniqueSlug(displaySlug || clientName)
-            const password_hash =
-                passwordProtected && password.trim() ? await sha256Hex(password.trim()) : null
-            const expires_at =
-                hasExpiration && expirationDate
-                    ? new Date(`${expirationDate}T23:59:59`).toISOString()
-                    : null
+            
+            let finalSessionId = sessionId
+            
+            // If we already have a session (temp), update it
+            if (sessionId) {
+                const title = sessionTitle.trim() || clientName.trim() || "Ensaio"
+                const finalSlug = await resolveUniqueSlug(displaySlug || clientName)
+                const password_hash =
+                    passwordProtected && password.trim() ? await sha256Hex(password.trim()) : null
+                const expires_at =
+                    hasExpiration && expirationDate
+                        ? new Date(`${expirationDate}T23:59:59`).toISOString()
+                        : null
 
-            const { data, error } = await supabase
-                .from("sessions")
-                .insert({
-                    photographer_id: photographer.id,
-                    title,
-                    client_name: clientName.trim(),
-                    slug: finalSlug,
-                    style: selectedStyle,
-                    password_hash,
-                    expires_at,
-                    status,
-                })
-                .select("id")
-                .single()
+                const { data, error } = await supabase
+                    .from("sessions")
+                    .update({
+                        title,
+                        client_name: clientName.trim(),
+                        slug: finalSlug,
+                        style: selectedStyle,
+                        password_hash,
+                        expires_at,
+                        status,
+                    })
+                    .eq("id", sessionId)
+                    .select("id")
+                    .single()
 
-            if (error) throw error
-            if (!data?.id) throw new Error("Resposta inválida do servidor.")
+                if (error) throw error
+                if (!data?.id) throw new Error("Resposta inválida do servidor.")
+                
+                finalSessionId = data.id
+            } else {
+                // Create new session
+                const title = sessionTitle.trim() || clientName.trim() || "Ensaio"
+                const finalSlug = await resolveUniqueSlug(displaySlug || clientName)
+                const password_hash =
+                    passwordProtected && password.trim() ? await sha256Hex(password.trim()) : null
+                const expires_at =
+                    hasExpiration && expirationDate
+                        ? new Date(`${expirationDate}T23:59:59`).toISOString()
+                        : null
+
+                const { data, error } = await supabase
+                    .from("sessions")
+                    .insert({
+                        photographer_id: photographer.id,
+                        title,
+                        client_name: clientName.trim(),
+                        slug: finalSlug,
+                        style: selectedStyle,
+                        password_hash,
+                        expires_at,
+                        status,
+                    })
+                    .select("id")
+                    .single()
+
+                if (error) throw error
+                if (!data?.id) throw new Error("Resposta inválida do servidor.")
+
+                finalSessionId = data.id
+                setSessionId(data.id)
+
+                // Upload photos if they exist and haven't been uploaded yet
+                const pendingPhotos = photos.filter(p => p.status === 'pending')
+                if (pendingPhotos.length > 0) {
+                    for (let i = 0; i < pendingPhotos.length; i++) {
+                        const photoIndex = photos.indexOf(pendingPhotos[i])
+                        await uploadPhoto(pendingPhotos[i], photoIndex, photographer.user_id, finalSessionId)
+                    }
+                }
+            }
 
             const origin = typeof window !== "undefined" ? window.location.origin : ""
+            const finalSlug = displaySlug || clientName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
             const publicUrl = `${origin}/galeria/${finalSlug}`
 
             if (status === "draft") {
                 toast.success("Rascunho salvo.")
-                router.push(`/ensaios/${data.id}`)
+                router.push(`/ensaios/${finalSessionId}`)
             } else {
                 setGalleryUrl(publicUrl)
                 setShowPublishModal(true)
@@ -149,8 +452,8 @@ export default function NovoEnsaioPage() {
     }
 
     return (
-        <div className="p-8">
-            <div className="mx-auto max-w-[1200px]">
+        <div className="flex flex-col w-full dashboard-page">
+            <div className="mx-auto w-full max-w-[1200px] px-4 py-5 md:p-8 flex flex-col space-y-5 md:space-y-6">
                 {/* Top Bar */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -406,11 +709,12 @@ export default function NovoEnsaioPage() {
                             /* Upload Zone - Empty State */
                             <div
                                 className={cn(
-                                    "mt-4 flex min-h-[300px] flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all",
+                                    "mt-4 flex min-h-[300px] flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all cursor-pointer",
                                     isDragOver
                                         ? "border-[#E85D24] bg-[rgba(232,93,36,0.04)]"
                                         : "border-[rgba(232,93,36,0.25)]"
                                 )}
+                                onClick={() => fileInputRef.current?.click()}
                                 onDragOver={(e) => {
                                     e.preventDefault()
                                     setIsDragOver(true)
@@ -419,9 +723,17 @@ export default function NovoEnsaioPage() {
                                 onDrop={(e) => {
                                     e.preventDefault()
                                     setIsDragOver(false)
-                                    // Handle file drop
+                                    handleFileSelect(e.dataTransfer.files)
                                 }}
                             >
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(e) => handleFileSelect(e.target.files)}
+                                />
                                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(232,93,36,0.1)]">
                                     <Camera className="h-6 w-6 text-[#E85D24]" />
                                 </div>
@@ -439,7 +751,7 @@ export default function NovoEnsaioPage() {
                             /* Photo Grid - Filled State */
                             <>
                                 <div className="mt-4 grid grid-cols-3 gap-2">
-                                    {photos.map((photoIndex, index) => {
+                                    {photos.map((photo, index) => {
                                         const isCover = coverIndex === index
                                         return (
                                             <div
@@ -448,40 +760,84 @@ export default function NovoEnsaioPage() {
                                                     "group relative aspect-square overflow-hidden rounded-lg",
                                                     isCover && "ring-[1.5px] ring-[#E85D24]"
                                                 )}
-                                                style={{ background: photoGradients[photoIndex % photoGradients.length] }}
                                             >
+                                                {/* Photo */}
+                                                <img
+                                                    src={photo.preview}
+                                                    alt={`Photo ${index + 1}`}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                                
+                                                {/* Upload Progress Overlay */}
+                                                {photo.status === 'uploading' && (
+                                                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                                        <div className="text-center">
+                                                            <Loader2 className="h-6 w-6 animate-spin text-white mx-auto mb-2" />
+                                                            <div className="w-32 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className="h-full bg-[#E85D24] transition-all duration-300"
+                                                                    style={{ width: `${photo.progress}%` }}
+                                                                />
+                                                            </div>
+                                                            <p className="text-white text-xs mt-1">{photo.progress}%</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Error Overlay */}
+                                                {photo.status === 'error' && (
+                                                    <div className="absolute inset-0 bg-red-900/70 flex items-center justify-center">
+                                                        <div className="text-center">
+                                                            <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
+                                                            <p className="text-white text-xs mb-2 px-2">{photo.error}</p>
+                                                            <button
+                                                                onClick={() => retryUpload(index)}
+                                                                className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded-full mx-auto"
+                                                            >
+                                                                <RefreshCw className="h-3 w-3" />
+                                                                Tentar novamente
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Success Overlay */}
+                                                {photo.status === 'success' && (
+                                                    <div className="absolute top-2 right-2">
+                                                        <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
+                                                            <Check className="h-3 w-3 text-white" />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
                                                 {/* Star icon - top left for cover photo */}
-                                                {isCover && (
+                                                {isCover && photo.status !== 'error' && (
                                                     <div className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#E85D24]">
                                                         <Star className="h-3 w-3 fill-white text-white" />
                                                     </div>
                                                 )}
+                                                
                                                 {/* CAPA badge - bottom left for cover photo */}
-                                                {isCover && (
+                                                {isCover && photo.status !== 'error' && (
                                                     <span className="absolute bottom-2 left-2 z-10 rounded-full bg-[#E85D24] px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
                                                         CAPA
                                                     </span>
                                                 )}
-                                                {/* Drag handle - top left on hover (only if not cover) */}
-                                                {!isCover && (
-                                                    <div className="absolute left-2 top-2 flex h-6 w-6 cursor-grab items-center justify-center rounded bg-[rgba(0,0,0,0.6)] opacity-0 transition-opacity group-hover:opacity-100">
-                                                        <GripVertical className="h-3.5 w-3.5 text-white" />
-                                                    </div>
-                                                )}
+                                                
                                                 {/* Delete button - top right on hover */}
-                                                <button
-                                                    onClick={() => {
-                                                        if (isCover) setCoverIndex(null)
-                                                        removePhoto(index)
-                                                    }}
-                                                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded bg-[rgba(0,0,0,0.6)] opacity-0 transition-all group-hover:opacity-100 hover:bg-red-500"
-                                                >
-                                                    <X className="h-3.5 w-3.5 text-white" />
-                                                </button>
-                                                {/* Set as cover button - bottom center on hover (only if not already cover) */}
-                                                {!isCover && (
+                                                {photo.status !== 'uploading' && (
                                                     <button
-                                                        onClick={() => setCoverIndex(index)}
+                                                        onClick={() => removePhoto(index)}
+                                                        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded bg-[rgba(0,0,0,0.6)] opacity-0 transition-all group-hover:opacity-100 hover:bg-red-500"
+                                                    >
+                                                        <X className="h-3.5 w-3.5 text-white" />
+                                                    </button>
+                                                )}
+                                                
+                                                {/* Set as cover button - bottom center on hover (only if not already cover and not error) */}
+                                                {!isCover && photo.status !== 'error' && photo.status !== 'uploading' && (
+                                                    <button
+                                                        onClick={() => updateCoverPhoto(index)}
                                                         className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[rgba(0,0,0,0.75)] px-2.5 py-1 text-[11px] font-medium text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-[rgba(0,0,0,0.9)]"
                                                     >
                                                         Definir como capa
@@ -496,10 +852,10 @@ export default function NovoEnsaioPage() {
                                         Passe o mouse sobre uma foto para definir a capa
                                     </p>
                                 )}
-                                <p className="mt-3 text-center text-[12px] text-[#888880]">
-                                    Arraste as fotos para reordenar
-                                </p>
-                                <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[rgba(232,93,36,0.4)] bg-transparent py-3 text-[13px] font-medium text-[#E85D24] transition-colors hover:border-[#E85D24] hover:bg-[rgba(232,93,36,0.04)]">
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[rgba(232,93,36,0.4)] bg-transparent py-3 text-[13px] font-medium text-[#E85D24] transition-colors hover:border-[#E85D24] hover:bg-[rgba(232,93,36,0.04)]"
+                                >
                                     <Camera className="h-4 w-4" />
                                     Adicionar mais fotos
                                 </button>

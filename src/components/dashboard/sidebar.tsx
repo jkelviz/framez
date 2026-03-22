@@ -1,8 +1,10 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { getPhotographer } from "@/lib/supabase/photographer"
 import { LayoutDashboard, Camera, Users, Globe, CreditCard, Settings, HelpCircle, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -30,6 +32,17 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [photographer, setPhotographer] = useState<{ name: string | null; plan: string | null } | null>(null)
+
+  useEffect(() => {
+    async function fetchPhotographer() {
+      const data = await getPhotographer(supabase)
+      if (data) {
+        setPhotographer(data)
+      }
+    }
+    fetchPhotographer()
+  }, [supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -37,9 +50,11 @@ export function Sidebar() {
     router.refresh()
   }
 
-  const userName = "Rafael Silva"
-  const userInitials = "RS"
-  const userPlan = "Plano Pro"
+  const userName = photographer?.name || "Carregando..."
+  const userInitials = photographer?.name 
+    ? photographer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : ".."
+  const userPlan = photographer?.plan ? `Plano ${photographer.plan.charAt(0).toUpperCase() + photographer.plan.slice(1)}` : "Plano Free"
 
   const allMobileItems = [...mainNavItems, bottomNavItems.find(i => i.label === "Config")!].filter(i => i?.isMobile)
 

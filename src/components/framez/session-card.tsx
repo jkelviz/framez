@@ -19,6 +19,7 @@ interface Session {
   gradientType?: number
   gradient?: string
   isNew?: boolean
+  coverPhotoUrl?: string | null
 }
 
 const gradients = [
@@ -49,7 +50,9 @@ export function SessionCard({ session, index }: { session: Session; index: numbe
   const [isHovered, setIsHovered] = useState(false)
   const status = statusConfig[session.status] || statusConfig.draft
   const clientIdentifier = session.clientName || session.client || "Cliente Desconhecido"
-  const backgroundStyle = session.gradient ? { background: "transparent" } : { background: gradients[(session.gradientType || 0) % gradients.length] }
+  const backgroundStyle = session.coverPhotoUrl 
+    ? { backgroundImage: `url(${session.coverPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: gradients[(session.gradientType || 0) % gradients.length] }
 
   const gallerySegment = session.slug && String(session.slug).length > 0 ? String(session.slug) : String(session.id)
 
@@ -77,10 +80,6 @@ export function SessionCard({ session, index }: { session: Session; index: numbe
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {session.gradient && (
-        <div className={cn("absolute inset-0 bg-gradient-to-br", session.gradient)} />
-      )}
-
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.95)] via-[rgba(0,0,0,0.3)] to-transparent"
         style={{ top: "40%" }} />

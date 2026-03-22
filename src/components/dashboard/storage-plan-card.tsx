@@ -1,14 +1,99 @@
 "use client"
 
-const storageData = [
-  { label: "Casamentos", size: "14.2 GB", color: "#E85D24", percentage: 42 },
-  { label: "Ensaios", size: "10.8 GB", color: "#F5A623", percentage: 32 },
-  { label: "Eventos", size: "6.4 GB", color: "#888880", percentage: 19 },
-  { label: "Outros", size: "2.8 GB", color: "#333333", percentage: 7 },
-]
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { getPhotographer } from "@/lib/supabase/photographer"
+
+interface StorageData {
+  label: string
+  size: string
+  color: string
+  percentage: number
+}
 
 export function StoragePlanCard() {
-  const totalUsed = 34.2
+  const [storageData, setStorageData] = useState<StorageData[]>([
+    { label: "Ensaios", size: "0 GB", color: "#E85D24", percentage: 0 },
+  ])
+  const [totalUsed, setTotalUsed] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState(Date.now())
+
+  const refreshStorage = async () => {
+    setLastUpdate(Date.now())
+    await fetchStorageData()
+  }
+
+  async function fetchStorageData() {
+    try {
+      const supabase = createClient()
+      const photographer = await getPhotographer(supabase)
+      
+      if (!photographer) {
+        setLoading(false)
+        return
+      }
+
+      // Get sessions first
+      const { data: sessions } = await supabase
+        .from("sessions")
+        .select("id, title, client_name")
+        .eq("photographer_id", photographer.id)
+
+      // Get total storage used from photos table
+      const { data: photos } = await supabase
+        .from("photos")
+        .select("file_size_bytes")
+        .in("session_id", sessions?.map(s => s.id) || [])
+      
+      const totalBytes = photos?.reduce((sum, photo) => sum + (photo.file_size_bytes || 0), 0) || 0
+      const totalStorageGB = 100 // Fixed 100GB limit
+      const usedGB = totalBytes / (1024 * 1024 * 1024)
+      const usedPercentage = (usedGB / totalStorageGB) * 100
+
+      // For now, group all as "Ensaios" since we don't have session types
+      const data: StorageData[] = [
+        {
+          label: "Ensaios",
+          size: `${usedGB.toFixed(1)} GB`,
+          color: "#E85D24",
+          percentage: Math.min(usedPercentage, 100)
+        }
+      ]
+
+      setStorageData(data)
+      setTotalUsed(parseFloat(usedGB.toFixed(1)))
+    } catch (error) {
+      console.error("Error fetching storage data:", error)
+      // Show zeros on error
+      setStorageData([
+        { label: "Ensaios", size: "0 GB", color: "#E85D24", percentage: 0 }
+      ])
+      setTotalUsed(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStorageData()
+    
+    // Set up periodic refresh and storage event listener
+    const interval = setInterval(fetchStorageData, 30000) // Refresh every 30 seconds
+    
+    // Listen for storage events from photo uploads
+    const handleStorageUpdate = () => {
+      fetchStorageData()
+    }
+    
+    window.addEventListener('storageUpdate', handleStorageUpdate)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storageUpdate', handleStorageUpdate)
+    }
+  }, [])
+
   const totalStorage = 100
 
   // Calculate cumulative offsets for donut segments
@@ -19,11 +104,32 @@ export function StoragePlanCard() {
     return { ...item, offset }
   })
 
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 animate-fade-in-up stagger-2">
+        <h3 className="mb-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Armazenamento
+        </h3>
+        <div className="flex items-center justify-center h-[180px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-6 animate-fade-in-up stagger-2">
-      <h3 className="mb-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Armazenamento
-      </h3>
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Armazenamento
+        </h3>
+        <button
+          onClick={refreshStorage}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Atualizar
+        </button>
+      </div>
 
       <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10">
         {/* Donut Chart */}
@@ -88,7 +194,7 @@ export function StoragePlanCard() {
             {storageData.map((item, i) => (
               <span key={i} className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.color }} />
-                {item.percentage}%
+                {item.percentage.toFixed(1)}%
               </span>
             ))}
           </div>

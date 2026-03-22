@@ -24,6 +24,7 @@ type DbSession = {
     status: string
     view_count: number | null
     created_at: string
+    cover_photo_url: string | null
 }
 
 export default function EnsaiosPage() {
@@ -48,7 +49,7 @@ export default function EnsaiosPage() {
 
             const { data, error } = await supabase
                 .from("sessions")
-                .select("id, title, client_name, slug, status, view_count, created_at")
+                .select("id, title, client_name, slug, status, view_count, created_at, cover_photo_url")
                 .eq("photographer_id", photographer.id)
                 .order("created_at", { ascending: false })
 
@@ -159,6 +160,7 @@ export default function EnsaiosPage() {
             status: d.status as "active" | "draft" | "archived",
             gradientType,
             isNew: Date.now() - created.getTime() < 604800000,
+            coverPhotoUrl: d.cover_photo_url,
         }
     }
 
@@ -166,7 +168,7 @@ export default function EnsaiosPage() {
     const hasNoMatches = !isLoading && sessions.length > 0 && filteredSessions.length === 0
 
     return (
-        <div className="flex flex-col w-full">
+        <div className="flex flex-col w-full dashboard-page">
             <SharedTopBar
                 title="Ensaios"
                 actionButton={
@@ -218,10 +220,10 @@ export default function EnsaiosPage() {
                         <div className="relative w-full md:w-auto">
                             <button
                                 onClick={() => setShowSortDropdown(!showSortDropdown)}
-                                className="flex w-full justify-between md:justify-start h-11 md:h-10 items-center gap-2 rounded-lg bg-[#161616] px-4 text-[14px] md:text-[13px] text-[#888880] transition-colors hover:text-[#F5F5F0]"
+                                className="flex w-full md:w-auto justify-between items-center gap-2 rounded-lg bg-[#161616] px-4 h-11 md:h-10 text-[14px] md:text-[13px] text-[#888880] transition-colors hover:text-[#F5F5F0] whitespace-nowrap"
                             >
-                                Ordenar por: {sortOptions.find((o) => o.id === sortBy)?.label}
-                                <ChevronDown className={cn("h-4 w-4 transition-transform", showSortDropdown && "rotate-180")} />
+                                <span>Ordenar por: {sortOptions.find((o) => o.id === sortBy)?.label}</span>
+                                <ChevronDown className={cn("h-4 w-4 transition-transform flex-shrink-0", showSortDropdown && "rotate-180")} />
                             </button>
                             {showSortDropdown && (
                                 <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#161616] py-1 shadow-xl">
@@ -314,11 +316,19 @@ export default function EnsaiosPage() {
                             Novo ensaio
                         </Link>
                     </div>
-                ) : (
+                ) : pageSlice.length > 0 ? (
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {pageSlice.map((session, index) => (
                             <SessionCard key={session.id} session={toCardSession(session, index)} index={index} />
                         ))}
+                    </div>
+                ) : (
+                    <div className="mt-16 flex flex-col items-center justify-center py-16">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(232,93,36,0.1)]">
+                            <Camera className="h-8 w-8 text-[#E85D24]" />
+                        </div>
+                        <h3 className="mt-6 text-[20px] font-medium text-[#F5F5F0]">Nenhum ensaio encontrado</h3>
+                        <p className="mt-2 text-[14px] text-[#888880]">Tente ajustar os filtros ou a busca.</p>
                     </div>
                 )}
 

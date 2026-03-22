@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
-    ArrowLeft, Grid3X3, Maximize, AlignVerticalJustifyStart, Check, Pencil, Loader2
+    ArrowLeft, Grid3X3, Maximize, AlignVerticalJustifyStart, Check, Pencil, Loader2, Trash2, AlertTriangle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PublishSuccessModal } from "@/components/framez/publish-modal"
@@ -33,6 +33,7 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [showPublishModal, setShowPublishModal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
     const [isEditingSlug, setIsEditingSlug] = useState(false)
     const [customSlug, setCustomSlug] = useState("")
@@ -71,6 +72,53 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
         fetchSession()
     }, [params.id, supabase])
 
+    const handleDelete = async () => {
+        setIsSaving(true)
+        try {
+            // First, get all photos for this session to delete from storage
+            const { data: photos } = await supabase
+                .from('photos')
+                .select('url')
+                .eq('session_id', params.id)
+
+            // Delete photos from storage
+            if (photos) {
+                for (const photo of photos) {
+                    if (photo.url) {
+                        const filePath = photo.url.split('/').pop()
+                        if (filePath) {
+                            await supabase.storage
+                                .from('photos')
+                                .remove([`${params.id}/${filePath}`])
+                        }
+                    }
+                }
+            }
+
+            // Delete photos from database
+            await supabase
+                .from('photos')
+                .delete()
+                .eq('session_id', params.id)
+
+            // Delete session
+            const { error } = await supabase
+                .from('sessions')
+                .delete()
+                .eq('id', params.id)
+
+            if (error) throw error
+
+            toast.success('Ensaio excluído com sucesso!')
+            window.location.href = '/ensaios'
+        } catch (error: any) {
+            toast.error('Erro ao excluir ensaio: ' + error.message)
+        } finally {
+            setIsSaving(false)
+            setShowDeleteModal(false)
+        }
+    }
+
     const handleSave = async (status: "draft" | "active") => {
         setIsSaving(true)
         try {
@@ -104,8 +152,8 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
     }
 
     return (
-        <div className="p-8">
-            <div className="mx-auto max-w-[1200px] animate-fade-in-up">
+        <div className="flex flex-col w-full dashboard-page">
+            <div className="mx-auto w-full max-w-[1200px] px-4 py-5 md:p-8 flex flex-col space-y-5 md:space-y-6">
                 {/* Top Bar */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -323,6 +371,17 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Delete Section */}
+                            <div className="mt-6 border-t border-[rgba(255,255,255,0.07)] pt-6">
+                                <button
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600/10 border border-red-600/20 px-4 py-3 text-[13px] font-medium text-red-400 transition-colors hover:bg-red-600/20 hover:border-red-600/30"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Excluir ensaio
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -339,6 +398,49 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
                 onClose={() => setShowPublishModal(false)}
                 galleryUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/galeria/${displaySlug}`}
             />
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+                    <div className="w-full max-w-md rounded-xl bg-[#1A1A1A] border border-[rgba(255,255,255,0.1)] p-6 animate-fade-in">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600/20">
+                                <AlertTriangle className="h-5 w-5 text-red-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-white">Excluir ensaio</h3>
+                        </div>
+                        <p className="text-sm text-[#888880] mb-6">
+                            Tem certeza? Esta ação não pode ser desfeita. Todas as fotos e dados do ensaio serão permanentemente excluídos.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={isSaving}
+                                className="flex-1 rounded-lg border border-[rgba(255,255,255,0.1)] bg-transparent px-4 py-2 text-[13px] font-medium text-[#888880] transition-colors hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                disabled={isSaving}
+                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Excluindo...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="h-4 w-4" />
+                                        Excluir
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

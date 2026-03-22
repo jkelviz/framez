@@ -178,3 +178,73 @@
   opacity: 0.03;
   pointer-events: none;
 }
+
+/* Page transition animations */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+/* Dashboard page animations */
+.dashboard-page {
+  animation: pageFadeIn 400ms ease-out;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card hover states */
+.hover-card {
+  transition: transform 200ms ease-out, border-color 200ms ease-out;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(232, 93, 36, 0.2);
+}
+
+/* Accordion animations */
+.accordion-content {
+  transition: max-height 300ms ease-out, opacity 300ms ease-out;
+}
+
+/* Loading skeletons */
+.skeleton {
+  background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
