@@ -1,8 +1,9 @@
-"use client"
-
 export const dynamic = 'force-dynamic'
 
+"use client"
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,43 +11,40 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SignupPage() {
-    const [name, setName] = useState("");
+export default function LoginPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleSignup = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log("Login form submitted with email:", email);
         setError("");
-        setSuccess("");
         setLoading(true);
 
         try {
             const supabase = createClient();
-            const { error } = await supabase.auth.signUp({
+            console.log("Attempting to sign in with Supabase...");
+            
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
-                options: {
-                    data: {
-                        full_name: name,
-                    },
-                },
             });
 
+            console.log("Sign in result:", { data, error });
+
             if (error) {
+                console.error("Login error:", error);
                 setError(error.message);
             } else {
-                setSuccess("Verifique seu email para confirmar o cadastro");
-                // Clear form
-                setName("");
-                setEmail("");
-                setPassword("");
+                console.log("Login successful, redirecting to dashboard...");
+                router.push("/dashboard");
             }
         } catch (err) {
-            setError("Ocorreu um erro ao criar sua conta. Tente novamente.");
+            console.error("Unexpected login error:", err);
+            setError("Ocorreu um erro ao fazer login. Tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -55,25 +53,13 @@ export default function SignupPage() {
     return (
         <Card className="bg-fz-bg-card border-fz-border">
             <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-serif">Comece grátis</CardTitle>
+                <CardTitle className="text-2xl font-serif">Entrar</CardTitle>
                 <CardDescription className="text-fz-text-secondary">
-                    Crie sua conta e transforme a entrega dos seus ensaios
+                    Insira seu email e senha para acessar seu painel
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name" className="text-fz-text-primary">Nome Completo</Label>
-                        <Input 
-                            id="name" 
-                            type="text" 
-                            placeholder="Seu nome artístico" 
-                            className="bg-fz-bg-base border-fz-border"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                    </div>
+                <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="email" className="text-fz-text-primary">Email</Label>
                         <Input 
@@ -95,7 +81,6 @@ export default function SignupPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            minLength={6}
                         />
                     </div>
                     {error && (
@@ -103,25 +88,20 @@ export default function SignupPage() {
                             {error}
                         </div>
                     )}
-                    {success && (
-                        <div className="text-green-500 text-sm text-center">
-                            {success}
-                        </div>
-                    )}
                     <Button 
-                        type="submit" 
+                        type="submit"
                         className="w-full bg-fz-accent hover:bg-fz-accent-hover text-white rounded-md h-10"
                         disabled={loading}
                     >
-                        {loading ? "Criando conta..." : "Criar Conta"}
+                        {loading ? "Entrando..." : "Entrar"}
                     </Button>
                 </form>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
                 <div className="text-sm text-center text-fz-text-secondary">
-                    Já tem uma conta?{" "}
-                    <Link href="/login" className="text-fz-accent hover:underline">
-                        Entrar
+                    Não tem uma conta?{" "}
+                    <Link href="/cadastro" className="text-fz-accent hover:underline">
+                        Cadastre-se grátis
                     </Link>
                 </div>
             </CardFooter>
