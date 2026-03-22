@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PasswordGate } from "@/components/gallery/password-gate";
 import { SplashScreen } from "@/components/gallery/splash-screen";
 import { GridLayout } from "@/components/gallery/grid-layout";
@@ -11,48 +11,101 @@ import { StoryLayout } from "@/components/gallery/story-layout";
 import { FullscreenViewer } from "@/components/gallery/fullscreen-viewer";
 import { ReviverSlideshow } from "@/components/gallery/reviver-slideshow";
 import { FloatingBar } from "@/components/gallery/floating-bar";
-
-// Mock photos for the UI
-const photos = [
-    { id: "1", src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=2069&auto=format&fit=crop", width: 2069, height: 1379 },
-    { id: "2", src: "https://images.unsplash.com/photo-1519225421980-715cb0211a19?q=80&w=2070&auto=format&fit=crop", width: 2070, height: 1380 },
-    { id: "3", src: "https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=2070&auto=format&fit=crop", width: 2070, height: 1380 },
-    { id: "4", src: "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=2070&auto=format&fit=crop", width: 2070, height: 3105 },
-    { id: "5", src: "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=2070&auto=format&fit=crop", width: 2070, height: 1380 },
-    { id: "6", src: "https://images.unsplash.com/photo-1541250848049-b4f714612052?q=80&w=2070&auto=format&fit=crop", width: 2070, height: 3105 },
-];
+import { createClient } from "@/lib/supabase/client";
 
 export default function GaleriaPage({ params }: { params: { slug: string } }) {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [showSplash, setShowSplash] = useState(true);
+    const [sessionData, setSessionData] = useState<any>(null);
+    const [photos, setPhotos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const supabase = createClient();
 
     // Viewer state
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const [showReviver, setShowReviver] = useState(false);
 
-    // Mock session data
-    const sessionData = {
-        clientName: "Maria & João",
-        style: "grid" as "grid" | "cinematic" | "story",
-    };
+    useEffect(() => {
+        async function fetchSession() {
+            try {
+                // Fetch session by slug
+                const { data: session, error: sessionError } = await supabase
+                    .from("sessions")
+                    .select("*")
+                    .eq("slug", params.slug)
+                    .single();
+
+                if (sessionError || !session) {
+                    console.error("Session not found:", sessionError);
+                    setLoading(false);
+                    return;
+                }
+
+                setSessionData(session);
+
+                // Fetch photos for this session
+                const { data: sessionPhotos, error: photosError } = await supabase
+                    .from("photos")
+                    .select("*")
+                    .eq("session_id", session.id)
+                    .order("order_index", { ascending: true });
+
+                if (photosError) {
+                    console.error("Error fetching photos:", photosError);
+                } else {
+                    setPhotos(sessionPhotos || []);
+                }
+            } catch (error) {
+                console.error("Error fetching session:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchSession();
+    }, [params.slug, supabase]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-fz-bg-base flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fz-accent"></div>
+            </div>
+        );
+    }
+
+    if (!sessionData) {
+        return (
+            <div className="min-h-screen bg-fz-bg-base flex items-center justify-center">
+                <div className="text-center">
+                    <h1 className="text-3xl font-serif text-fz-text-primary mb-4">Galeria não encontrada</h1>
+                    <p className="text-fz-text-secondary">Esta galeria não existe ou foi removida.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // If no password protection, unlock automatically
+    if (!sessionData.password_hash && !isUnlocked) {
+        setIsUnlocked(true);
+    }
 
     if (!isUnlocked) {
-        return <PasswordGate onSuccess={() => setIsUnlocked(true)} />;
+        return <PasswordGate onSuccess={() => setIsUnlocked(true)} sessionPasswordHash={sessionData.password_hash} />;
     }
 
     return (
         <div className="min-h-screen bg-fz-bg-base text-fz-text-primary">
             {showSplash && (
                 <SplashScreen
-                    clientName={sessionData.clientName}
+                    clientName={sessionData.client_name}
                     onComplete={() => setShowSplash(false)}
                 />
             )}
 
             {/* Header */}
             <header className={`py-12 text-center transition-opacity duration-1000 ${showSplash ? 'opacity-0' : 'opacity-100'}`}>
-                <h1 className="font-serif text-5xl mb-2">{sessionData.clientName}</h1>
-                <p className="text-fz-text-secondary tracking-widest uppercase text-sm">Casamento na Praia</p>
+                <h1 className="font-serif text-5xl mb-2">{sessionData.client_name}</h1>
+                <p className="text-fz-text-secondary tracking-widest uppercase text-sm">{sessionData.title || 'Galeria Privada'}</p>
             </header>
 
             {/* Main Gallery Layout */}
@@ -61,6 +114,7 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
                     {sessionData.style === "grid" && <GridLayout photos={photos} onPhotoClick={setViewerIndex} />}
                     {sessionData.style === "cinematic" && <CinematicLayout photos={photos} onPhotoClick={setViewerIndex} />}
                     {sessionData.style === "story" && <StoryLayout photos={photos} onPhotoClick={setViewerIndex} />}
+                    {!sessionData.style && <GridLayout photos={photos} onPhotoClick={setViewerIndex} />}
                 </main>
             )}
 

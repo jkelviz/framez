@@ -4,21 +4,42 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import bcrypt from "bcryptjs";
 
 interface PasswordGateProps {
     onSuccess: () => void;
+    sessionPasswordHash?: string | null;
 }
 
-export function PasswordGate({ onSuccess }: PasswordGateProps) {
+export function PasswordGate({ onSuccess, sessionPasswordHash }: PasswordGateProps) {
     const [password, setPassword] = useState("");
-    const [error, setError] = useState(false);
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === "1234" || password.toLowerCase() === "framez") { // Mock password check
-            onSuccess();
-        } else {
-            setError(true);
+        if (!sessionPasswordHash) {
+            setError("Esta galeria não está protegida por senha");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Try bcrypt comparison first
+            const isValid = await bcrypt.compare(password, sessionPasswordHash);
+            
+            // Fallback for plain text passwords (if any were saved before hashing)
+            const isValidFallback = password === sessionPasswordHash;
+
+            if (isValid || isValidFallback) {
+                onSuccess();
+            } else {
+                setError("Senha incorreta");
+            }
+        } catch (err) {
+            setError("Erro ao validar senha");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -36,13 +57,13 @@ export function PasswordGate({ onSuccess }: PasswordGateProps) {
                         value={password}
                         onChange={(e) => {
                             setPassword(e.target.value);
-                            setError(false);
+                            setError("");
                         }}
                         className={`bg-fz-bg-card border-fz-border h-12 text-center text-lg ${error ? 'border-[hsl(var(--destructive))]' : ''}`}
                     />
-                    {error && <p className="text-[hsl(var(--destructive))] text-sm">Senha incorreta. Tente novamente.</p>}
-                    <Button type="submit" className="w-full h-12 bg-fz-accent hover:bg-fz-accent-hover text-white text-lg rounded-md">
-                        Acessar Galeria
+                    {error && <p className="text-[hsl(var(--destructive))] text-sm">{error}</p>}
+                    <Button type="submit" disabled={isLoading} className="w-full h-12 bg-fz-accent hover:bg-fz-accent-hover text-white text-lg rounded-md">
+                        {isLoading ? "Verificando..." : "Acessar Galeria"}
                     </Button>
                 </form>
             </div>

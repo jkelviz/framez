@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { UploadZone } from "@/components/editor/upload-zone"
 import { PhotoGridManager } from "@/components/editor/photo-grid-manager"
+import bcrypt from "bcryptjs"
 
 const galleryStyles = [
     { id: "grid", label: "Grid", icon: Grid3X3 },
@@ -122,13 +123,19 @@ export default function SessionEditorPage({ params }: { params: { id: string } }
     const handleSave = async (status: "draft" | "active") => {
         setIsSaving(true)
         try {
+            // Hash password if provided
+            let passwordHash = null
+            if (passwordProtected && password) {
+                passwordHash = await bcrypt.hash(password, 10)
+            }
+
             const updatePayload: any = {
                 title: sessionTitle,
                 client_name: clientName,
                 slug: displaySlug,
                 style: selectedStyle,
                 status: status,
-                password_hash: passwordProtected && password ? password : null,
+                password_hash: passwordHash,
                 expires_at: hasExpiration && expirationDate ? new Date(expirationDate).toISOString() : null,
             }
 
