@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { getPhotographer } from "@/lib/supabase/photographer"
+import { getPhotographer, type PhotographerSummary } from "@/lib/supabase/photographer"
 import { LayoutDashboard, Camera, Users, Globe, CreditCard, Settings, HelpCircle, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -32,7 +32,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [photographer, setPhotographer] = useState<{ name: string | null; plan: string | null | undefined } | null>(null)
+  const [photographer, setPhotographer] = useState<PhotographerSummary | null>(null)
 
   useEffect(() => {
     async function fetchPhotographer() {

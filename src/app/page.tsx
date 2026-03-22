@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
@@ -15,25 +16,25 @@ export default function HomePage() {
     // Handle auth callback
     if (code) {
       // Redirect to proper auth callback route
-      router.push(`/auth/callback?code=${code}`)
+      router.replace(`/auth/callback?code=${code}`)
       return
     }
 
     // Handle auth error
     if (error) {
       console.error("Auth error:", error, errorDescription)
-      router.push("/login")
+      router.replace("/login")
       return
     }
 
     // Default redirect to dashboard for authenticated users or login
-    router.push("/dashboard")
+    router.replace("/dashboard")
   }, [router, searchParams])
 
   // Loading state while redirecting
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E85D24]"></div>
+      <Loader2 className="w-8 h-8 animate-spin text-[#E85D24]" />
     </div>
   )
 }

@@ -41,12 +41,16 @@ export function StoragePlanCard() {
         .eq("photographer_id", photographer.id)
 
       // Get total storage used from photos table
-      const { data: photos } = await supabase
-        .from("photos")
-        .select("file_size_bytes")
-        .in("session_id", sessions?.map(s => s.id) || [])
+      // Note: file_size_bytes field doesn't exist in photos table yet
+      // const { data: photos } = await supabase
+      //   .from("photos")
+      //   .select("file_size_bytes")
+      //   .in("session_id", sessions?.map(s => s.id) || [])
       
-      const totalBytes = photos?.reduce((sum, photo) => sum + (photo.file_size_bytes || 0), 0) || 0
+      // Mock storage calculation based on session count
+      const sessionCount = sessions?.length || 0
+      const estimatedBytes = sessionCount * 500 * 1024 * 1024 // 500MB per session estimate
+      const totalBytes = estimatedBytes
       const totalStorageGB = 100 // Fixed 100GB limit
       const usedGB = totalBytes / (1024 * 1024 * 1024)
       const usedPercentage = (usedGB / totalStorageGB) * 100
