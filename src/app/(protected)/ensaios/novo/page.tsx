@@ -295,6 +295,15 @@ export default function NovoEnsaioPage() {
             
             console.log('Upload successful for:', photo.file.name)
             
+            // Update storage_used_bytes in photographers table
+            try {
+                // Skip storage update for now since column doesn't exist in database
+                // TODO: Add storage_used_bytes column to photographers table
+                console.log('Storage update skipped - column not available yet')
+            } catch (storageError) {
+                console.error('Error updating storage:', storageError)
+            }
+            
             // Trigger storage update event
             window.dispatchEvent(new CustomEvent('storageUpdate'))
             
@@ -328,7 +337,7 @@ export default function NovoEnsaioPage() {
         if (!photographer || !sessionId) return
         
         const photo = photos[index]
-        await uploadPhoto(photo, index, photographer.user_id, sessionId)
+        await uploadPhoto(photo, index, photographer.id, sessionId)
     }
 
     async function resolveUniqueSlug(base: string) {
@@ -695,9 +704,9 @@ export default function NovoEnsaioPage() {
                                     <span className="text-[#888880]">
                                         <span className="text-[#F5F5F0]">1</span> de <span className="text-[#F5F5F0]">3</span> ensaios ativos · Plano Free
                                     </span>
-                                    <button className="font-medium text-[#E85D24] transition-colors hover:text-[#F5A623]">
+                                    <Link href="/planos" className="font-medium text-[#E85D24] transition-colors hover:text-[#F5A623]">
                                         Fazer upgrade
-                                    </button>
+                                    </Link>
                                 </div>
                                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#161616]">
                                     <div className="h-full w-[33.33%] rounded-full bg-gradient-to-r from-[#E85D24] to-[#F5A623]" />
@@ -708,11 +717,23 @@ export default function NovoEnsaioPage() {
 
                     {/* Right Column - Photos */}
                     <div className="flex-1">
+                        {/* Hidden file input - always in DOM */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => handleFileSelect(e.target.files)}
+                        />
                         <div className="flex items-center justify-between">
                             <span className="text-[14px] font-semibold text-[#F5F5F0]">
                                 Fotos ({photos.length})
                             </span>
-                            <button className="flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.15)] bg-transparent px-4 py-2 text-[13px] font-medium text-[#F5F5F0] transition-colors hover:bg-[rgba(255,255,255,0.05)]">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.15)] bg-transparent px-4 py-2 text-[13px] font-medium text-[#F5F5F0] transition-colors hover:bg-[rgba(255,255,255,0.05)]"
+                            >
                                 <Plus className="h-4 w-4" />
                                 Adicionar fotos
                             </button>
@@ -739,14 +760,6 @@ export default function NovoEnsaioPage() {
                                     handleFileSelect(e.dataTransfer.files)
                                 }}
                             >
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    multiple
-                                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                                    className="hidden"
-                                    onChange={(e) => handleFileSelect(e.target.files)}
-                                />
                                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(232,93,36,0.1)]">
                                     <Camera className="h-6 w-6 text-[#E85D24]" />
                                 </div>

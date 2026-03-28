@@ -16,9 +16,10 @@ interface FullscreenViewerProps {
     photos: Photo[];
     initialIndex: number;
     onClose: () => void;
+    onPhotoUpdate?: (photoId: string, updates: Partial<{is_favorite: boolean, is_selected: boolean}>) => void;
 }
 
-export function FullscreenViewer({ photos, initialIndex, onClose }: FullscreenViewerProps) {
+export function FullscreenViewer({ photos, initialIndex, onClose, onPhotoUpdate }: FullscreenViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isFavorite, setIsFavorite] = useState(photos[initialIndex]?.is_favorite || false);
     const [isSelected, setIsSelected] = useState(photos[initialIndex]?.is_selected || false);
@@ -55,6 +56,7 @@ export function FullscreenViewer({ photos, initialIndex, onClose }: FullscreenVi
             await supabase.from('photos')
                 .update({ is_favorite: newVal })
                 .eq('id', photos[currentIndex].id);
+            onPhotoUpdate?.(photos[currentIndex].id, { is_favorite: newVal });
         } catch (error) {
             console.error('Error updating favorite:', error);
             // Revert on error
@@ -70,6 +72,7 @@ export function FullscreenViewer({ photos, initialIndex, onClose }: FullscreenVi
             await supabase.from('photos')
                 .update({ is_selected: newVal })
                 .eq('id', photos[currentIndex].id);
+            onPhotoUpdate?.(photos[currentIndex].id, { is_selected: newVal });
         } catch (error) {
             console.error('Error updating selected:', error);
             // Revert on error

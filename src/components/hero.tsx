@@ -59,7 +59,7 @@ export function Hero() {
                 Começar grátis
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </Link>
-              <Link href="#features" className="border border-[rgba(255,255,255,0.2)] text-[#F5F5F0] px-7 py-4 rounded-lg font-medium hover:border-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.05)] transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto">
+              <Link href="#recursos" className="border border-[rgba(255,255,255,0.2)] text-[#F5F5F0] px-7 py-4 rounded-lg font-medium hover:border-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.05)] transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto">
                 <Play size={18} />
                 Ver demonstração
               </Link>

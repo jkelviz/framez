@@ -186,11 +186,22 @@ interface PricingCardProps {
 }
 
 function PricingCard({ plan, price, period, formatPrice, isAnnual, delay }: PricingCardProps) {
-  const handleCtaClick = () => {
+  const handleCtaClick = async () => {
     if (plan.name === "Free") {
       window.location.href = "/cadastro"
     } else {
-      window.location.href = `/api/stripe/checkout?plan=${plan.name.toLowerCase()}`
+      // Check if user is authenticated
+      const { createClient } = await import("@/lib/supabase/client")
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        // Not logged in - redirect to signup
+        window.location.href = `/cadastro?plan=${plan.name.toLowerCase()}`
+      } else {
+        // Logged in - go to checkout
+        window.location.href = `/api/stripe/checkout?plan=${plan.name.toLowerCase()}&billing=${isAnnual ? 'annual' : 'monthly'}`
+      }
     }
   }
 

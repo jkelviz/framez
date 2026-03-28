@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 export function FloatingCTA() {
   const [isVisible, setIsVisible] = useState(false)
@@ -37,12 +38,12 @@ export function FloatingCTA() {
           : "opacity-0 translate-y-4 pointer-events-none"
       }`}
     >
-      <button className="bg-[#E85D24] text-[#F5F5F0] px-8 py-3 rounded-full font-medium shadow-lg shadow-[#E85D24]/25 hover:bg-[#d14f1c] transition-colors flex items-center gap-2">
+      <Link href="/cadastro" className="bg-[#E85D24] text-[#F5F5F0] px-8 py-3 rounded-full font-medium shadow-lg shadow-[#E85D24]/25 hover:bg-[#d14f1c] transition-colors flex items-center gap-2">
         Começar grátis
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M3.33337 8H12.6667M12.6667 8L8.00004 3.33333M12.6667 8L8.00004 12.6667" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-      </button>
+      </Link>
     </div>
   )
 }

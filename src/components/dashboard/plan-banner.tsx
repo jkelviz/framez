@@ -39,7 +39,7 @@ export function PlanBanner() {
       {/* Right side */}
       <div className="flex items-center shrink-0">
         <Link
-          href="/configuracoes/billing"
+          href="/planos"
           className="text-[12px] md:text-[13px] font-medium text-[#E85D24] tracking-[-0.05em] transition-all md:hover:underline whitespace-nowrap leading-none"
         >
           Gerenciar

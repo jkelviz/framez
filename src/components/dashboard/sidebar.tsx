@@ -23,7 +23,7 @@ const mainNavItems: NavItem[] = [
 ]
 
 const bottomNavItems: NavItem[] = [
-  { icon: CreditCard, label: "Planos", href: "/configuracoes/planos" },
+  { icon: CreditCard, label: "Planos", href: "/planos" },
   { icon: Settings, label: "Config", href: "/configuracoes", isMobile: true },
   { icon: HelpCircle, label: "Ajuda", href: "/ajuda" },
 ]

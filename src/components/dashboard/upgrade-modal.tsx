@@ -154,7 +154,7 @@ export function UpgradeModal({ children }: { children: React.ReactNode }) {
                                 </motion.button>
                                 
                                 <button
-                                    onClick={() => setOpen(false)}
+                                    onClick={() => { setOpen(false); window.location.href = "/planos" }}
                                     className="w-full py-2 text-[13px] text-[#888880] hover:text-[#F5F5F0] transition-colors"
                                 >
                                     Ver todos os planos →

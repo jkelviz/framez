@@ -50,6 +50,7 @@ export function HowItWorks() {
   return (
     <section
       ref={sectionRef}
+      id="como-funciona"
       className="py-[60px] lg:py-[100px] border-t border-[rgba(255,255,255,0.05)]"
     >
       <div className="max-w-[1200px] mx-auto px-6">

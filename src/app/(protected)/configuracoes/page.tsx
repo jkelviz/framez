@@ -76,7 +76,7 @@ export default function ConfiguracoesPage() {
                     phone: phone || null,
                     bio: bio || null
                 })
-                .eq('user_id', photographer.user_id)
+                .eq('id', photographer.id)
             
             if (error) throw error
             toast.success("Perfil atualizado com sucesso!")

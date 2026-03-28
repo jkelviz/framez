@@ -7,14 +7,14 @@ export function Footer() {
     produto: [
       { label: "Recursos", href: "#recursos" },
       { label: "Preços", href: "#precos" },
-      { label: "Changelog", href: "#" },
-      { label: "Roadmap", href: "#" },
+      { label: "Como funciona", href: "#como-funciona" },
+      { label: "Começar grátis", href: "/cadastro" },
     ],
     suporte: [
-      { label: "Central de ajuda", href: "#" },
-      { label: "Contato", href: "#" },
+      { label: "Central de ajuda", href: "/ajuda" },
+      { label: "Contato", href: "/ajuda#contato" },
       { label: "Status", href: "#" },
-      { label: "API Docs", href: "#" },
+      { label: "Changelog", href: "#" },
     ],
     legal: [
       { label: "Privacidade", href: "#" },

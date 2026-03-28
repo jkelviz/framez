@@ -74,6 +74,10 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
 
                 setSessionData(session);
 
+                // Increment view count
+                // TODO: Create increment_view_count RPC function in Supabase
+                console.log('View count increment skipped - RPC not available yet');
+
                 // Fetch photos for this session
                 const { data: sessionPhotos, error: photosError } = await supabase
                     .from("photos")
@@ -172,6 +176,9 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
                     photos={photos}
                     initialIndex={viewerIndex}
                     onClose={() => setViewerIndex(null)}
+                    onPhotoUpdate={(photoId, updates) => {
+                        setPhotos(prev => prev.map(p => p.id === photoId ? {...p, ...updates} : p))
+                    }}
                 />
             )}
 

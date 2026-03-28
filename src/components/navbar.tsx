@@ -32,7 +32,7 @@ export function Navbar() {
   const navLinks = [
     { label: "Recursos", href: "#recursos" },
     { label: "Preços", href: "#precos" },
-    { label: "Para fotógrafos", href: "#fotografos" },
+    { label: "Como funciona", href: "#como-funciona" },
   ]
 
   return (

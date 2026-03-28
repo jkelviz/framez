@@ -35,44 +35,37 @@ export function StoragePlanCard() {
       }
 
       // Get real storage data from photographers table
-      const { data: photographerData } = await supabase
-        .from("photographers")
-        .select("plan")
-        .eq("user_id", photographer.user_id)
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: ph } = await supabase
+        .from('photographers')
+        .select('plan')
+        .eq('id', photographer.id)
         .single()
-
-      // Mock storage calculation based on session count for now
+      
+      // Mock storage calculation based on session count for now (since storage_used_bytes column doesn't exist yet)
       const { data: sessions } = await supabase
         .from("sessions")
         .select("id")
         .eq("photographer_id", photographer.id)
       
       const sessionCount = sessions?.length || 0
-      const usedGB = sessionCount * 0.5 // Estimate 0.5GB per session
-      
-      // Plan limits
-      const planLimits: Record<string, number> = {
-        free: 2,
-        starter: 10,
-        pro: 100,
-        professional: 500
-      }
-      
-      const planLimit = planLimits[photographerData?.plan || 'free'] || 2
-      const percentage = (usedGB / planLimit) * 100
+      const usedGB = (sessionCount * 0.5).toFixed(2) // Estimate 0.5GB per session
+      const limits: Record<string, number> = { free: 2, starter: 10, pro: 100, professional: 500 }
+      const limitGB = limits[ph?.plan || 'free']
+      const percentage = (parseFloat(usedGB) / limitGB) * 100
 
       // For now, group all as "Ensaios" since we don't have session types
       const data: StorageData[] = [
         {
           label: "Ensaios",
-          size: `${usedGB.toFixed(1)} GB`,
+          size: `${usedGB} GB`,
           color: "#E85D24",
           percentage: Math.min(percentage, 100)
         }
       ]
 
       setStorageData(data)
-      setTotalUsed(parseFloat(usedGB.toFixed(1)))
+      setTotalUsed(parseFloat(usedGB))
     } catch (error) {
       console.error("Error fetching storage data:", error)
       // Show zeros on error
@@ -156,13 +149,14 @@ export function StoragePlanCard() {
                 strokeWidth="12"
                 strokeDasharray={`${segment.percentage * 2.51} 251`}
                 strokeDashoffset={-segment.offset * 2.51}
-                className="transition-all duration-500"
               />
             ))}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-3xl font-medium text-foreground tracking-[-0.05em]">{totalUsed} GB</span>
-            <span className="text-xs text-muted-foreground tracking-[-0.05em]">de {totalStorage} GB</span>
+            <p className="text-[13px] text-[#888880] mt-1">
+              {totalUsed.toFixed(2)} GB de 2 GB usados
+            </p>
           </div>
         </div>
 
