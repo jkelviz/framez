@@ -72,6 +72,7 @@ export function DashboardHome() {
             }
 
             const activeSessions = sessions.filter((s) => s.status === "active").length
+            const totalSessions = sessions.length
             const uniqueClients = new Set(sessions.map((s) => s.client_name.trim().toLowerCase())).size
 
             const monthStart = startOfMonth()
@@ -90,7 +91,7 @@ export function DashboardHome() {
                 .reduce((acc, s) => acc + (s.view_count ?? 0), 0)
 
             setMetrics({
-                activeSessions,
+                activeSessions: totalSessions, // Exibiremos o total para não confundir se for rascunho
                 uniqueClients,
                 visitsThisMonth,
                 visitsPrevMonth,

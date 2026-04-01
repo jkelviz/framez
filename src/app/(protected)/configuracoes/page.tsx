@@ -104,19 +104,98 @@ export default function ConfiguracoesPage() {
     }
 
     const handleDeleteAccount = async () => {
+        setSaving(true)
         try {
-            // This would need proper implementation with cascading deletes
-            toast.error("Funcionalidade em desenvolvimento")
-            setShowDeleteModal(false)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user || !photographer) throw new Error("Usuário não encontrado")
+
+            // 1. Get all sessions
+            const { data: sessions } = await supabase
+                .from('sessions')
+                .select('id')
+                .eq('photographer_id', photographer.id)
+
+            // 2. Delete all photos from storage
+            if (sessions && sessions.length > 0) {
+                const sessionIds = sessions.map((s: any) => s.id)
+
+                const { data: photos } = await supabase
+                    .from('photos')
+                    .select('url')
+                    .in('session_id', sessionIds)
+
+                if (photos && photos.length > 0) {
+                    const filePaths = photos
+                        .map((p: any) => {
+                            try {
+                                const url = new URL(p.url)
+                                const parts = url.pathname.split('/photos/')
+                                return parts[1] || null
+                            } catch { return null }
+                        })
+                        .filter(Boolean) as string[]
+
+                    if (filePaths.length > 0) {
+                        await supabase.storage.from('photos').remove(filePaths)
+                    }
+                }
+
+                // 3. Delete photos from DB
+                await supabase.from('photos').delete().in('session_id', sessionIds)
+            }
+
+            // 4. Delete sessions
+            await supabase.from('sessions').delete().eq('photographer_id', photographer.id)
+
+            // 5. Delete photographer profile
+            await supabase.from('photographers').delete().eq('id', photographer.id)
+
+            // 6. Delete auth user (must be last)
+            const { error: authError } = await supabase.auth.admin?.deleteUser?.(user.id) 
+                ?? await supabase.rpc('delete_user')
+
+            // Sign out and redirect
+            await supabase.auth.signOut()
+            toast.success("Conta excluída com sucesso.")
+            window.location.href = "/"
         } catch (error: any) {
             toast.error("Erro ao excluir conta: " + error.message)
+        } finally {
+            setSaving(false)
+            setShowDeleteModal(false)
         }
     }
 
     const handleExportData = async () => {
         try {
-            // This would need proper implementation
-            toast.success("Preparando seus dados...")
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user || !photographer) return
+
+            const { data: sessions } = await supabase
+                .from('sessions')
+                .select('*')
+                .eq('photographer_id', photographer.id)
+
+            const exportData = {
+                profile: {
+                    name: photographer.name,
+                    email: user.email,
+                    bio: photographer.bio,
+                    plan: photographer.plan,
+                    created_at: photographer.created_at,
+                },
+                sessions: sessions ?? [],
+                exported_at: new Date().toISOString(),
+            }
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `framez-dados-${new Date().toISOString().split('T')[0]}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success("Dados exportados com sucesso!")
         } catch (error: any) {
             toast.error("Erro ao exportar dados: " + error.message)
         }

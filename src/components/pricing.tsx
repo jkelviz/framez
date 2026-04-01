@@ -189,19 +189,46 @@ function PricingCard({ plan, price, period, formatPrice, isAnnual, delay }: Pric
   const handleCtaClick = async () => {
     if (plan.name === "Free") {
       window.location.href = "/cadastro"
-    } else {
-      // Check if user is authenticated
-      const { createClient } = await import("@/lib/supabase/client")
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        // Not logged in - redirect to signup
-        window.location.href = `/cadastro?plan=${plan.name.toLowerCase()}`
-      } else {
-        // Logged in - go to checkout
-        window.location.href = `/api/stripe/checkout?plan=${plan.name.toLowerCase()}&billing=${isAnnual ? 'annual' : 'monthly'}`
-      }
+      return
+    }
+
+    // Check if user is authenticated
+    const { createClient } = await import("@/lib/supabase/client")
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      // Not logged in - redirect to signup with plan hint
+      window.location.href = `/cadastro?plan=${plan.name.toLowerCase()}`
+      return
+    }
+
+    // Map plan name to priceId (use env vars in production)
+    const priceMap: Record<string, string> = {
+      starter:      isAnnual ? (process.env.NEXT_PUBLIC_STRIPE_STARTER_ANNUAL  || 'price_starter_annual')  : (process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY  || 'price_starter_monthly'),
+      pro:          isAnnual ? (process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL      || 'price_pro_annual')      : (process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY      || 'price_pro_monthly'),
+      professional: isAnnual ? (process.env.NEXT_PUBLIC_STRIPE_PROFESSIONAL_ANNUAL || 'price_professional_annual') : (process.env.NEXT_PUBLIC_STRIPE_PROFESSIONAL_MONTHLY || 'price_professional_monthly'),
+    }
+
+    const priceId = priceMap[plan.name.toLowerCase()]
+
+    // Fetch photographer id
+    const { data: photographerData } = await supabase
+      .from('photographers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId, photographerId: photographerData?.id }),
+      })
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } catch (err) {
+      console.error('Checkout error:', err)
     }
   }
 

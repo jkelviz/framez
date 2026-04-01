@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { PasswordGate } from "@/components/gallery/password-gate";
 import { SplashScreen } from "@/components/gallery/splash-screen";
 import { GridLayout } from "@/components/gallery/grid-layout";
+import { NetflixLayout } from "@/components/gallery/netflix-layout";
 import { CinematicLayout } from "@/components/gallery/cinematic-layout";
 import { StoryLayout } from "@/components/gallery/story-layout";
 import { FullscreenViewer } from "@/components/gallery/fullscreen-viewer";
@@ -15,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function GaleriaPage({ params }: { params: { slug: string } }) {
     const [isUnlocked, setIsUnlocked] = useState(false);
-    const [showSplash, setShowSplash] = useState(true);
+    const [showSplash, setShowSplash] = useState(false);
     const [sessionData, setSessionData] = useState<any>(null);
     const [photos, setPhotos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -105,7 +106,14 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
         }
 
         fetchSession();
-    }, [params.slug, supabase]);
+    }, [params.slug]);
+
+    // Auto-unlock when session has no password (use effect to avoid setState during render)
+    useEffect(() => {
+        if (sessionData && !sessionData.password_hash) {
+            setIsUnlocked(true);
+        }
+    }, [sessionData]);
 
     if (loading) {
         return (
@@ -126,10 +134,6 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
         );
     }
 
-    // If no password protection, unlock automatically
-    if (!sessionData.password_hash && !isUnlocked) {
-        setIsUnlocked(true);
-    }
 
     if (!isUnlocked) {
         return <PasswordGate onSuccess={() => setIsUnlocked(true)} sessionPasswordHash={sessionData.password_hash} />;
@@ -137,12 +141,6 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
 
     return (
         <div className="min-h-screen bg-fz-bg-base text-fz-text-primary">
-            {showSplash && (
-                <SplashScreen
-                    clientName={sessionData.client_name}
-                    onComplete={() => setShowSplash(false)}
-                />
-            )}
 
             {/* Header */}
             <header className={`py-12 text-center transition-opacity duration-1000 ${showSplash ? 'opacity-0' : 'opacity-100'}`}
@@ -161,14 +159,12 @@ export default function GaleriaPage({ params }: { params: { slug: string } }) {
             </header>
 
             {/* Main Gallery Layout */}
-            {!showSplash && (
-                <main className="animate-in fade-in duration-1000">
-                    {sessionData.style === "grid" && <GridLayout photos={photos} onPhotoClick={setViewerIndex} />}
-                    {sessionData.style === "cinematic" && <CinematicLayout photos={photos} onPhotoClick={setViewerIndex} />}
-                    {sessionData.style === "story" && <StoryLayout photos={photos} onPhotoClick={setViewerIndex} />}
-                    {!sessionData.style && <GridLayout photos={photos} onPhotoClick={setViewerIndex} />}
-                </main>
-            )}
+            <main className="animate-in fade-in py-8 duration-1000">
+                {sessionData.style === "grid" && <NetflixLayout photos={photos} onPhotoClick={setViewerIndex} />}
+                {sessionData.style === "cinematic" && <CinematicLayout photos={photos} onPhotoClick={setViewerIndex} />}
+                {sessionData.style === "story" && <StoryLayout photos={photos} onPhotoClick={setViewerIndex} />}
+                {!sessionData.style && <NetflixLayout photos={photos} onPhotoClick={setViewerIndex} />}
+            </main>
 
             {/* Overlays */}
             {viewerIndex !== null && (

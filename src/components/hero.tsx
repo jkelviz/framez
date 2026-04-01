@@ -33,79 +33,38 @@ export function Hero() {
         background: "radial-gradient(ellipse at top left, #1a0d08 0%, #0A0A0A 50%)",
       }}
     >
-      <div className="max-w-[1200px] mx-auto px-6 py-12 lg:py-0 w-full">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-          {/* Left side - Content */}
-          <div className="space-y-5 text-center lg:text-left">
-            <div className="reveal" style={{ transitionDelay: "0.1s" }}>
-              <span className="text-[#E85D24] text-xs uppercase tracking-[0.2em] font-medium">
-                Plataforma para fotógrafos
-              </span>
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1604537529428-15bcbeecfe4d?q=80&w=2669&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat opacity-20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-[#0A0A0A] opacity-80" />
+      <div className="max-w-[1000px] mx-auto px-6 py-24 relative z-10 w-full flex flex-col items-center justify-center text-center mt-12">
+        <div className="space-y-6 flex flex-col items-center">
+            <div className="reveal flex items-center gap-2 px-3 py-1 rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] backdrop-blur-md" style={{ transitionDelay: "0.1s" }}>
+              <span className="w-2 h-2 rounded-full bg-[#E85D24] animate-pulse" />
+              <span className="text-[#F5F5F0] text-[11px] uppercase tracking-[0.2em] font-medium">Apresentando FrameZ 2.0</span>
             </div>
 
-            <h1 className="reveal font-medium tracking-tighter text-[36px] md:text-[48px] lg:text-[64px] text-[#F5F5F0] leading-[1.1]" style={{ transitionDelay: "0.2s" }}>
-              Seus ensaios merecem uma experiência{" "}
-              <span className="gradient-text font-[var(--font-instrument-serif)] font-normal tracking-normal italic">cinematográfica</span>
+            <h1 className="reveal font-semibold tracking-[-0.03em] text-[48px] md:text-[64px] lg:text-[80px] text-white leading-[1.05]" style={{ transitionDelay: "0.2s" }}>
+              O palco principal <br className="hidden md:block" /> para suas obras.
             </h1>
 
-            <p className="reveal text-[#888880] text-base md:text-lg max-w-xl mx-auto lg:mx-0 leading-[1.7]" style={{ transitionDelay: "0.3s" }}>
-              Transforme a entrega de fotos em uma experiência memorável.
-              <br className="hidden md:block" />
-              Galerias imersivas que valorizam seu trabalho e encantam seus clientes.
+            <p className="reveal text-[#888880] text-lg md:text-xl max-w-2xl mx-auto leading-[1.6]" style={{ transitionDelay: "0.3s" }}>
+              Uma plataforma premium projetada meticulosamente para fotógrafos que exigem o absoluto melhor. Entregue ensaios com a qualidade visual de um filme de cinema.
             </p>
 
-            <div className="reveal flex flex-col sm:flex-row gap-4 pt-4 justify-center lg:justify-start" style={{ transitionDelay: "0.4s" }}>
-              <Link href="/cadastro" className="animated-gradient-btn text-[#F5F5F0] px-7 py-4 rounded-lg font-medium inline-flex items-center justify-center gap-2 group w-full sm:w-auto">
-                Começar grátis
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
+            <div className="reveal flex flex-col sm:flex-row gap-4 pt-8 justify-center w-full sm:w-auto" style={{ transitionDelay: "0.4s" }}>
+              <Link href="/cadastro" className="bg-[#E85D24] text-white px-8 py-4 rounded-full font-medium text-[15px] hover:bg-[#E85D24]/90 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_rgba(232,93,36,0.3)]">
+                Começar gratuitamente
+                <Play className="w-4 h-4 fill-white" />
               </Link>
-              <Link href="#recursos" className="border border-[rgba(255,255,255,0.2)] text-[#F5F5F0] px-7 py-4 rounded-lg font-medium hover:border-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.05)] transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto">
-                <Play size={18} />
-                Ver demonstração
+              <Link href="#recursos" className="border border-[rgba(255,255,255,0.15)] text-[#F5F5F0] px-8 py-4 rounded-full font-medium text-[15px] hover:bg-[rgba(255,255,255,0.05)] transition-all flex items-center justify-center gap-2 backdrop-blur-sm">
+                Explorar recursos
               </Link>
-            </div>
-
-            <p className="reveal text-[#888880] text-sm pt-2" style={{ transitionDelay: "0.5s" }}>
-              Usado por <span className="text-[#F5F5F0]">+de 100 fotógrafos</span>
-            </p>
-          </div>
-
-          {/* Right side - Split Mockup */}
-          <div className="reveal relative order-first lg:order-last" style={{ transitionDelay: "0.4s" }}>
-            {/* Radial glow behind both */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-[300px] lg:w-[400px] h-[300px] lg:h-[400px] bg-[rgba(232,93,36,0.08)] rounded-full blur-[100px]" />
-            </div>
-
-            {/* Mobile: stacked vertically, no rotation, 60% size */}
-            <div className="relative flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-0 scale-[0.6] lg:scale-100 origin-center">
-              {/* Phone mockup - Gallery (on top for mobile) */}
-              <div
-                className="relative z-20 w-[180px] lg:-mr-0 order-first lg:order-last"
-                style={{ transform: "rotate(0deg)" }}
-              >
-                <div className="lg:hidden">
-                  <PhoneMockup />
-                </div>
-                <div className="hidden lg:block" style={{ transform: "rotate(2deg)" }}>
-                  <PhoneMockup />
-                </div>
-              </div>
-
-              {/* Browser mockup - Dashboard (below for mobile) */}
-              <div
-                className="relative z-10 w-[320px] lg:-mr-16 order-last lg:order-first"
-                style={{ transform: "rotate(0deg)" }}
-              >
-                <div className="lg:hidden">
-                  <BrowserMockup />
-                </div>
-                <div className="hidden lg:block" style={{ transform: "rotate(-2deg)" }}>
-                  <BrowserMockup />
-                </div>
-              </div>
             </div>
           </div>
+      </div>
+      <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-[80%] max-w-[1200px] aspect-[21/9] z-20 mx-auto hidden md:block perspective-[1000px]">
+        <div className="w-full h-full transform transition-transform duration-1000 rotate-x-[15deg] hover:rotate-x-0 rounded-t-[2rem] overflow-hidden border-t-2 border-x-2 border-[rgba(255,255,255,0.1)] shadow-[0_-20px_50px_rgba(232,93,36,0.15)] bg-black">
+          <BrowserMockup />
         </div>
       </div>
     </section>

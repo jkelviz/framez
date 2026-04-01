@@ -20,10 +20,12 @@ interface Plan {
 export default function PlanosPage() {
     const supabase = createClient()
     const [loading, setLoading] = useState(true)
+    const [subscribing, setSubscribing] = useState<string | null>(null)
     const [photographer, setPhotographer] = useState<any>(null)
     const [storageUsed, setStorageUsed] = useState(0)
     const [storageLimit, setStorageLimit] = useState(2) // GB
     const [billingHistory, setBillingHistory] = useState<any[]>([])
+    const [isAnnual, setIsAnnual] = useState(false)
 
     useEffect(() => {
         async function fetchData() {
@@ -80,6 +82,49 @@ export default function PlanosPage() {
         fetchData()
     }, [supabase])
 
+    // Price IDs from Stripe (replace with real ones from your Stripe dashboard)
+    const PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
+        starter: {
+            monthly: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY || 'price_starter_monthly',
+            annual:  process.env.NEXT_PUBLIC_STRIPE_STARTER_ANNUAL  || 'price_starter_annual',
+        },
+        pro: {
+            monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY || 'price_pro_monthly',
+            annual:  process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL  || 'price_pro_annual',
+        },
+        professional: {
+            monthly: process.env.NEXT_PUBLIC_STRIPE_PROFESSIONAL_MONTHLY || 'price_professional_monthly',
+            annual:  process.env.NEXT_PUBLIC_STRIPE_PROFESSIONAL_ANNUAL  || 'price_professional_annual',
+        },
+    }
+
+    const handleSubscribe = async (planId: string) => {
+        if (!photographer) return
+        setSubscribing(planId)
+        try {
+            const priceId = isAnnual ? PRICE_IDS[planId]?.annual : PRICE_IDS[planId]?.monthly
+            if (!priceId) {
+                window.location.href = '/planos'
+                return
+            }
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ priceId, photographerId: photographer.id }),
+            })
+            const { url, error } = await res.json()
+            if (url) {
+                window.location.href = url
+            } else {
+                console.error('Checkout error:', error)
+            }
+        } catch (err) {
+            console.error('Subscribe error:', err)
+        } finally {
+            setSubscribing(null)
+        }
+    }
+
     const storagePercentage = (storageUsed / storageLimit) * 100
     const storageStatus = storagePercentage > 95 ? 'critical' : storagePercentage > 80 ? 'warning' : 'normal'
 
@@ -103,7 +148,7 @@ export default function PlanosPage() {
         {
             id: 'starter',
             name: 'Starter',
-            price: 'R$47/mês',
+            price: isAnnual ? 'R$470/ano' : 'R$47/mês',
             features: [
                 '5 ensaios ativos',
                 '200 fotos por ensaio',
@@ -119,7 +164,7 @@ export default function PlanosPage() {
         {
             id: 'pro',
             name: 'Pro',
-            price: 'R$97/mês',
+            price: isAnnual ? 'R$970/ano' : 'R$97/mês',
             features: [
                 'Ensaios ilimitados',
                 'Fotos ilimitadas',
@@ -136,7 +181,7 @@ export default function PlanosPage() {
         {
             id: 'professional',
             name: 'Professional',
-            price: 'R$197/mês',
+            price: isAnnual ? 'R$1890/ano' : 'R$197/mês',
             features: [
                 'Tudo do Pro',
                 '500GB armazenamento',
@@ -256,7 +301,34 @@ export default function PlanosPage() {
 
                 {/* PLAN COMPARISON */}
                 <div>
-                    <h2 className="text-[24px] font-semibold text-[#F5F5F0] mb-6 tracking-[-0.05em]">Escolha seu plano</h2>
+                    <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+                        <h2 className="text-[24px] font-semibold text-[#F5F5F0] tracking-[-0.05em]">Escolha seu plano</h2>
+                        
+                        {/* Toggle Anual / Mensal */}
+                        <div className="flex items-center gap-3 bg-[#111111] border border-[rgba(255,255,255,0.06)] p-1 rounded-full">
+                            <button
+                                onClick={() => setIsAnnual(false)}
+                                className={cn(
+                                    "px-4 py-2 rounded-full text-[13px] font-medium transition-colors",
+                                    !isAnnual ? "bg-[#222] text-[#F5F5F0]" : "text-[#888880] hover:text-[#bbb]"
+                                )}
+                            >
+                                Mensal
+                            </button>
+                            <button
+                                onClick={() => setIsAnnual(true)}
+                                className={cn(
+                                    "px-4 py-2 rounded-full text-[13px] font-medium transition-colors flex items-center gap-2",
+                                    isAnnual ? "bg-[#222] text-[#F5F5F0]" : "text-[#888880] hover:text-[#bbb]"
+                                )}
+                            >
+                                Anual
+                                <span className="bg-[#E85D24]/20 text-[#E85D24] text-[10px] px-2 py-0.5 rounded-full">
+                                    -20%
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {plans.map((plan) => (
@@ -292,17 +364,18 @@ export default function PlanosPage() {
                                 </div>
 
                                 <button
+                                    onClick={() => !plan.current && !plan.disabled && handleSubscribe(plan.id)}
+                                    disabled={plan.current || !!plan.disabled || subscribing === plan.id}
                                     className={cn(
-                                        "w-full py-3 rounded-lg font-medium transition-all",
+                                        "w-full py-3 rounded-lg font-medium transition-all disabled:cursor-not-allowed",
                                         plan.current
                                             ? "bg-[#333] text-[#888880] cursor-not-allowed"
                                             : plan.highlighted
-                                                ? "bg-gradient-to-r from-[#E85D24] to-[#F5A623] text-white hover:shadow-[0_0_20px_rgba(232,93,36,0.3)]"
-                                                : "border border-[rgba(255,255,255,0.06)] text-[#F5F5F0] hover:bg-[rgba(255,255,255,0.05)]"
+                                                ? "bg-gradient-to-r from-[#E85D24] to-[#F5A623] text-white hover:shadow-[0_0_20px_rgba(232,93,36,0.3)] disabled:opacity-70"
+                                                : "border border-[rgba(255,255,255,0.06)] text-[#F5F5F0] hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-70"
                                     )}
-                                    disabled={plan.current}
                                 >
-                                    {plan.current ? 'Plano atual' : `Assinar ${plan.name}`}
+                                    {subscribing === plan.id ? 'Aguarde...' : plan.current ? 'Plano atual' : `Assinar ${plan.name}`}
                                 </button>
                             </div>
                         ))}
