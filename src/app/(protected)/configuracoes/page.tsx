@@ -151,8 +151,8 @@ export default function ConfiguracoesPage() {
             await supabase.from('photographers').delete().eq('id', photographer.id)
 
             // 6. Delete auth user (must be last)
-            const { error: authError } = await supabase.auth.admin?.deleteUser?.(user.id) 
-                ?? await supabase.rpc('delete_user')
+            // @ts-ignore - Supabase type needs regen
+            const { error: authError } = await supabase.auth.admin?.deleteUser?.(user.id) ?? await supabase.rpc('delete_user')
 
             // Sign out and redirect
             await supabase.auth.signOut()
